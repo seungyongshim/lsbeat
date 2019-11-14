@@ -2,6 +2,7 @@ package beater
 
 import (
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
@@ -13,9 +14,12 @@ import (
 
 // Lsbeat configuration.
 type Lsbeat struct {
-	done   chan struct{}
-	config config.Config
-	client beat.Client
+	done          chan struct{}
+	config        config.Config
+	client        beat.Client
+	period        time.Duration
+	path          string    // root 디렉토리
+	lastIndexTime time.Time // 가장 마지막 검색한 시간
 }
 
 // New creates an instance of lsbeat.
@@ -51,14 +55,8 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		event := beat.Event{
-			Timestamp: time.Now(),
-			Fields: common.MapStr{
-				"type":    b.Info.Name,
-				"counter": counter,
-			},
-		}
-		bt.client.Publish(event)
+		listDir(bt.path, bt, b, counter)
+
 		logp.Info("Event sent")
 		counter++
 	}
@@ -68,4 +66,39 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 func (bt *Lsbeat) Stop() {
 	bt.client.Close()
 	close(bt.done)
+}
+
+func listDir(dirFile string, bt *Lsbeat, b *beat.Beat, counter int) {
+	files, _ := ioutil.ReadDir(dirFile)
+	for _, f := range files {
+		t := f.ModTime()
+
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields: common.MapStr{
+				"type":        b.Info.Name,
+				"counter":     counter,
+				"modTime":     t,
+				"filename":    f.Name(),
+				"fullname":    dirFile + "/" + f.Name(),
+				"isDirectory": f.IsDir(),
+				"fileSize":    f.Size(),
+			},
+		}
+
+		// 첫번째 실행인 경우 전체 파일 목록 색인
+		if counter == 1 {
+			bt.client.Publish(event)
+		} else {
+			// 2번째 이후 인 경우 실행 이후 추가된 파일만 색인
+			if t.After(bt.lastIndexTime) {
+				bt.client.Publish(event)
+			}
+		}
+
+		// 디렉토리인 경우 하위 파일들 재귀 호출.
+		if f.IsDir() {
+			listDir(dirFile+"/"+f.Name(), bt, b, counter)
+		}
+	}
 }

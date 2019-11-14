@@ -3641,12 +3641,44 @@ None
 *`counter`*::
 +
 --
-PLEASE UPDATE DOCUMENTATION
-
-
 type: long
 
 required: True
+
+--
+
+*`modTime`*::
++
+--
+type: date
+
+--
+
+*`filename`*::
++
+--
+type: text
+
+--
+
+*`fullname`*::
++
+--
+type: text
+
+--
+
+*`isDirectory`*::
++
+--
+type: boolean
+
+--
+
+*`fileSize`*::
++
+--
+type: long
 
 --
 

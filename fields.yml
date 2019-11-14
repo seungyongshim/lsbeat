@@ -2410,5 +2410,13 @@
     - name: counter
       type: long
       required: true
-      description: >
-        PLEASE UPDATE DOCUMENTATION
+    - name: modTime
+      type: date
+    - name: filename
+      type: text
+    - name: fullname
+      type: text
+    - name: isDirectory
+      type: boolean
+    - name: fileSize
+      type: long
