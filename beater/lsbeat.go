@@ -33,6 +33,9 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 		done:   make(chan struct{}),
 		config: c,
 	}
+
+	bt.path = c.Path
+
 	return bt, nil
 }
 
@@ -57,6 +60,7 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 
 		listDir(bt.path, bt, b, counter)
 
+		bt.lastIndexTime = time.Now()
 		logp.Info("Event sent")
 		counter++
 	}

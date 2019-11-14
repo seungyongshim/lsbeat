@@ -6,3 +6,4 @@
 /lsbeat.test
 *.pyc
 lsbeat.exe
+logs/**
