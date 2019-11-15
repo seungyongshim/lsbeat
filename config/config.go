@@ -3,14 +3,18 @@
 
 package config
 
-import "time"
+import (
+	"time"
+)
 
 type Config struct {
 	Period time.Duration `config:"period"`
-	Path   string        `config:"path"`
+	Paths  []string      `config:"paths"`
 }
 
-var DefaultConfig = Config{
-	Period: 1 * time.Second,
-	Path:   "*",
-}
+var (
+	DefaultConfig = Config{
+		Period: 30 * time.Second,
+		Paths:  []string{"."},
+	}
+)

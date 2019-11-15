@@ -18,7 +18,7 @@ type Lsbeat struct {
 	config        config.Config
 	client        beat.Client
 	period        time.Duration
-	path          string    // root 디렉토리
+	paths         []string
 	lastIndexTime time.Time // 가장 마지막 검색한 시간
 }
 
@@ -34,7 +34,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 		config: c,
 	}
 
-	bt.path = c.Path
+	bt.paths = c.Paths
 
 	return bt, nil
 }
@@ -50,7 +50,6 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 	}
 
 	ticker := time.NewTicker(bt.config.Period)
-	counter := 1
 	for {
 		select {
 		case <-bt.done:
@@ -58,11 +57,9 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		listDir(bt.path, bt, b, counter)
-
-		bt.lastIndexTime = time.Now()
-		logp.Info("Event sent")
-		counter++
+		for _, path := range bt.paths {
+			listDir(path, bt, b)
+		}
 	}
 }
 
@@ -72,37 +69,36 @@ func (bt *Lsbeat) Stop() {
 	close(bt.done)
 }
 
-func listDir(dirFile string, bt *Lsbeat, b *beat.Beat, counter int) {
-	files, _ := ioutil.ReadDir(dirFile)
+func listDir(dirName string, bt *Lsbeat, b *beat.Beat) {
+	files, _ := ioutil.ReadDir(dirName)
+	fileinfos := []common.MapStr{}
+
+	dirSize := int64(0)
+	filecount := 0
+
 	for _, f := range files {
-		t := f.ModTime()
-
-		event := beat.Event{
-			Timestamp: time.Now(),
-			Fields: common.MapStr{
-				"type":        b.Info.Name,
-				"counter":     counter,
-				"modTime":     t,
-				"filename":    f.Name(),
-				"fullname":    dirFile + "/" + f.Name(),
-				"isDirectory": f.IsDir(),
-				"fileSize":    f.Size(),
-			},
-		}
-
-		// 첫번째 실행인 경우 전체 파일 목록 색인
-		if counter == 1 {
-			bt.client.Publish(event)
-		} else {
-			// 2번째 이후 인 경우 실행 이후 추가된 파일만 색인
-			if t.After(bt.lastIndexTime) {
-				bt.client.Publish(event)
-			}
-		}
-
-		// 디렉토리인 경우 하위 파일들 재귀 호출.
 		if f.IsDir() {
-			listDir(dirFile+"/"+f.Name(), bt, b, counter)
+			listDir(dirName+"/"+f.Name(), bt, b)
+		} else {
+			dirSize += f.Size()
+
+			fileinfos = append(fileinfos, common.MapStr{
+				"fileName": f.Name(),
+				"fileSize": f.Size(),
+				"modTime":  f.ModTime(),
+			})
+			filecount++
 		}
 	}
+
+	event := beat.Event{
+		Timestamp: time.Now(),
+		Fields: common.MapStr{
+			"files":      fileinfos,
+			"filesCount": filecount,
+			"dirName":    dirName,
+			"dirSize":    dirSize,
+		},
+	}
+	bt.client.Publish(event)
 }
