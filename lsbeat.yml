@@ -4,18 +4,24 @@
 setup.ilm.enabled: false
 xpack.monitoring.enabled: false
 
+fields_under_root: true
+fields:
+  site: "mirero.co.kr"
+  tag: lsbeat
+  rules:
+    - "bluecats"
+    - "develop"
+    - "syshim"
+
 lsbeat:
   # Defines how often an event is sent to the output
-  period: 5s
+  period: 1m
   paths:
-  - "C:\test"
-  - "C:\test1"
-  
-#output.console:
-
+  - "C:/DemoInput"
+    
 output.kafka:
   enabled: true
-  hosts: ["192.168.100.76:9092"]
+  hosts: ["192.168.70.23:9092"]
   topic: 'lsbeat'
   required_acks: 1
   max_message_bytes: 1000000

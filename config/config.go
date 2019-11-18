@@ -14,7 +14,7 @@ type Config struct {
 
 var (
 	DefaultConfig = Config{
-		Period: 30 * time.Second,
+		Period: 60 * time.Second,
 		Paths:  []string{"."},
 	}
 )

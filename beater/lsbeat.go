@@ -3,6 +3,7 @@ package beater
 import (
 	"fmt"
 	"io/ioutil"
+	s "strings"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
@@ -58,6 +59,7 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 		}
 
 		for _, path := range bt.paths {
+			s.Replace(path, "\\", "/", -1)
 			listDir(path, bt, b)
 		}
 	}
@@ -69,16 +71,33 @@ func (bt *Lsbeat) Stop() {
 	close(bt.done)
 }
 
-func listDir(dirName string, bt *Lsbeat, b *beat.Beat) {
-	files, _ := ioutil.ReadDir(dirName)
+func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int) {
+	files, err := ioutil.ReadDir(dirName)
+
+	if err != nil {
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields: common.MapStr{
+				"dirName": dirName,
+				"isExist": false,
+			},
+		}
+		bt.client.Publish(event)
+		return 0, 0
+	}
+
 	fileinfos := []common.MapStr{}
 
 	dirSize := int64(0)
+	dirSizeAcc := int64(0)
 	filecount := 0
+	filecountAcc := 0
 
 	for _, f := range files {
 		if f.IsDir() {
-			listDir(dirName+"/"+f.Name(), bt, b)
+			da, fa := listDir(dirName+"/"+f.Name(), bt, b)
+			dirSizeAcc += da
+			filecountAcc += fa
 		} else {
 			dirSize += f.Size()
 
@@ -91,14 +110,21 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) {
 		}
 	}
 
+	dirSizeAcc += dirSize
+	filecountAcc += filecount
+
 	event := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
-			"files":      fileinfos,
-			"filesCount": filecount,
-			"dirName":    dirName,
-			"dirSize":    dirSize,
+			"files":                fileinfos,
+			"filesCount":           filecount,
+			"filesCountAccumulate": filecountAcc,
+			"dirName":              dirName,
+			"dirSize":              dirSize,
+			"dirSizeAccumulate":    dirSizeAcc,
+			"isExist":              true,
 		},
 	}
 	bt.client.Publish(event)
+	return dirSizeAcc, filecountAcc
 }
