@@ -1,0 +1,14 @@
+version: '2'
+services:
+  golang:
+    image: mirerosystemkr/golang:1.12.13
+    volumes: 
+      - ./:/go/src/github.com/seungyongshim/lsbeat
+    command:
+      - bash
+      - -c
+      - |
+        cd /go/src/github.com/seungyongshim/lsbeat/
+        make update
+        make
+

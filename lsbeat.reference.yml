@@ -1,10 +1,20 @@
 ################### Lsbeat Configuration Example #########################
 
 ############################# Lsbeat ######################################
+setup.ilm.enabled: false
+xpack.monitoring.enabled: false
+
+fields_under_root: true
+fields:
+  site: "mirero.co.kr"
+  tag: metricbeat
+  rules:
+    - "bluecats"
 
 lsbeat:
-  # Defines how often an event is sent to the output
-  period: 1s
+  period: 1m
+  paths:
+  - "."
 
 #================================ General ======================================
 

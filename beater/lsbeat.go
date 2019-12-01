@@ -20,6 +20,7 @@ type Lsbeat struct {
 	client        beat.Client
 	period        time.Duration
 	paths         []string
+	smbDrives     []string
 	lastIndexTime time.Time // 가장 마지막 검색한 시간
 }
 
@@ -36,6 +37,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	}
 
 	bt.paths = c.Paths
+	bt.smbDrives = c.SmbDrives
 
 	return bt, nil
 }
@@ -50,17 +52,23 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 		return err
 	}
 
-	ticker := time.NewTicker(bt.config.Period)
+	d := bt.config.Period
+	ticker := time.NewTicker(d)
 	for {
+		for _, path := range bt.paths {
+			path = s.Replace(path, "\\", "/", -1)
+			listDir(path, bt, b)
+		}
+
+		for _, path := range bt.smbDrives {
+			path = s.Replace(path, "\\", "/", -1)
+			checkSmbDrive(path, bt, b)
+		}
+
 		select {
 		case <-bt.done:
 			return nil
 		case <-ticker.C:
-		}
-
-		for _, path := range bt.paths {
-			s.Replace(path, "\\", "/", -1)
-			listDir(path, bt, b)
 		}
 	}
 }
@@ -71,7 +79,23 @@ func (bt *Lsbeat) Stop() {
 	close(bt.done)
 }
 
-func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int) {
+func checkSmbDrive(dirName string, bt *Lsbeat, b *beat.Beat) {
+	_, err := ioutil.ReadDir(dirName)
+	if err != nil {
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields: common.MapStr{
+				"dirName": dirName,
+				"isExist": false,
+				"smb":     true,
+				"reason":  "\\\\192.168.100.76\\watch",
+			},
+		}
+		bt.client.Publish(event)
+	}
+}
+
+func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	files, err := ioutil.ReadDir(dirName)
 
 	if err != nil {
@@ -83,7 +107,7 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int) {
 			},
 		}
 		bt.client.Publish(event)
-		return 0, 0
+		return 0, 0, 0
 	}
 
 	fileinfos := []common.MapStr{}
@@ -92,12 +116,16 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int) {
 	dirSizeAcc := int64(0)
 	filecount := 0
 	filecountAcc := 0
+	subfoldercount := 0
+	subfoldercountAcc := 0
 
 	for _, f := range files {
 		if f.IsDir() {
-			da, fa := listDir(dirName+"/"+f.Name(), bt, b)
+			subfoldercount++
+			da, fa, sfa := listDir(dirName+"/"+f.Name(), bt, b)
 			dirSizeAcc += da
 			filecountAcc += fa
+			subfoldercountAcc += sfa
 		} else {
 			dirSize += f.Size()
 
@@ -112,19 +140,23 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int) {
 
 	dirSizeAcc += dirSize
 	filecountAcc += filecount
+	subfoldercountAcc += subfoldercount
 
 	event := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
-			"files":                fileinfos,
-			"filesCount":           filecount,
-			"filesCountAccumulate": filecountAcc,
-			"dirName":              dirName,
-			"dirSize":              dirSize,
-			"dirSizeAccumulate":    dirSizeAcc,
-			"isExist":              true,
+			"files":                    fileinfos,
+			"filesCount":               filecount,
+			"filesCountAccumulate":     filecountAcc,
+			"dirName":                  dirName,
+			"dirSize":                  dirSize,
+			"dirSizeAccumulate":        dirSizeAcc,
+			"subFolderCount":           subfoldercount,
+			"subFolderCountAccumulate": subfoldercountAcc,
+			"isExist":                  true,
 		},
 	}
 	bt.client.Publish(event)
-	return dirSizeAcc, filecountAcc
+	logp.Info("lsbeat published listDir.")
+	return dirSizeAcc, filecountAcc, subfoldercountAcc
 }

@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Period time.Duration `config:"period"`
-	Paths  []string      `config:"paths"`
+	Period    time.Duration `config:"period"`
+	Paths     []string      `config:"paths"`
+	SmbDrives []string      `config:"smb_drives"`
 }
 
 var (

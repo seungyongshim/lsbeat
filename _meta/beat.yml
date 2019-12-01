@@ -4,17 +4,16 @@
 setup.ilm.enabled: false
 xpack.monitoring.enabled: false
 
-queue.mem:
-  events: 4096
-
 fields_under_root: true
 fields:
   site: "mirero.co.kr"
-  tag: metricbeat
+  tag: lsbeat
   rules:
     - "bluecats"
 
 lsbeat:
-  period: 30s
+  period: 1m
   paths:
-  - "."
+  - C:\DemoInput
+  smb_drives:
+  - z:\
