@@ -7,14 +7,16 @@ xpack.monitoring.enabled: false
 fields_under_root: true
 fields:
   site: "mirero.co.kr"
-  tag: metricbeat
+  tag: lsbeat
   rules:
     - "bluecats"
 
 lsbeat:
   period: 1m
   paths:
-  - "."
+  - C:\DemoInput
+  smb_drives:
+  - z:\
 
 #================================ General ======================================
 

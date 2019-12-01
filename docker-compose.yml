@@ -4,11 +4,13 @@ services:
     image: mirerosystemkr/golang:1.12.13
     volumes: 
       - ./:/go/src/github.com/seungyongshim/lsbeat
+      - /var/run/docker.sock:/var/run/docker.sock
     command:
       - bash
       - -c
       - |
         cd /go/src/github.com/seungyongshim/lsbeat/
-        make update
-        make
+        #make update 
+        GOOS=windows GOARCH=386 go build -o lsbeat_x86_2.exe -ldflags "-X main.qualifier=syshim"
+        
 

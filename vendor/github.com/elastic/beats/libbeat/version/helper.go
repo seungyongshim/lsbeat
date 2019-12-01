@@ -22,6 +22,7 @@ import "time"
 // GetDefaultVersion returns the current libbeat version.
 // This method is in a separate file as the version.go file is auto generated
 func GetDefaultVersion() string {
+
 	if qualifier == "" {
 		return defaultBeatVersion
 	}
@@ -33,6 +34,10 @@ var (
 	commit    = "unknown"
 	qualifier = ""
 )
+
+func SetQualifier(p1 string) {
+	qualifier = p1
+}
 
 // BuildTime exposes the compile-time build time information.
 // It will represent the zero time instant if parsing fails.
