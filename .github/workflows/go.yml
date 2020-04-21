@@ -31,4 +31,4 @@ jobs:
         fi
 
     - name: Build
-      run: GOOS=windows GOARCH=386 go build -o lsbeat_x86_2.exe -v . -ldflags "-X main.qualifier=syshim"
+      run: GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
