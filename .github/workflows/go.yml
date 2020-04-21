@@ -18,26 +18,34 @@ jobs:
       with:
         go-version: 1.13
       id: go
+    - name: Install VirtualEnv
+      run: |
+        sudo apt-get clean && apt-get update && apt-get upgrade -y 
+        sudo apt-get install python-pip  -y
+        sudo pip install virtualenv
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+    - name: install Mage 
+      run: |
+        go get -u -d github.com/magefile/mage
+        cd ~/go/src/github.com/magefile/mage
+        go run bootstrap.go
+
+    - name: Check out code the Go-Way
+      run: go get github.com/${GITHUB_REPOSITORY}
 
     - name: Get dependencies
       run: |
+        env
+        cd ~/go/src/github.com/${GITHUB_REPOSITORY}
         go get -v -t -d ./...
         if [ -f Gopkg.toml ]; then
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-        sudo apt-get clean && apt-get update && apt-get upgrade -y 
-        sudo apt-get install python-pip  -y
-        sudo pip install virtualenv
-        
-    - name: mage install
-      run: |
-        go get -u -d github.com/magefile/mage
-        cd $GOPATH/src/github.com/magefile/mage
-        go run bootstrap.go
+        go get -v github.com/mattn/goveralls
+        go install -v github.com/mattn/goveralls
 
     - name: Build
-      run: GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
+      run: |
+        cd ~/go/src/github.com/${GITHUB_REPOSITORY}
+        GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
