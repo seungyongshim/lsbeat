@@ -55,6 +55,7 @@ jobs:
         GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
         cp lsbeat_x86.exe ~/release/lsbeat_x86.exe
         cd ~
+        pwd
         
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
@@ -62,4 +63,4 @@ jobs:
         # Artifact name
         name: beats
         # Directory containing files to upload
-        path: ./release
+        path: ../.././release
