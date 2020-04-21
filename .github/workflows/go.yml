@@ -29,6 +29,15 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
+        apt-get clean && apt-get update && apt-get upgrade -y 
+        apt-get install python-pip docker.io -y
+        pip install virtualenv
+        
+    - name: mage install
+      run: |
+        go get -u -d github.com/magefile/mage
+        cd /go/src/github.com/magefile/mage
+        go run bootstrap.go
 
     - name: Build
       run: GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
