@@ -29,9 +29,9 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-        apt-get clean && apt-get update && apt-get upgrade -y 
-        apt-get install python-pip docker.io -y
-        pip install virtualenv
+        sudo apt-get clean && apt-get update && apt-get upgrade -y 
+        sudo apt-get install python-pip docker.io -y
+        sudo pip install virtualenv
         
     - name: mage install
       run: |
