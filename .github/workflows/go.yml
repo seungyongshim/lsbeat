@@ -45,7 +45,19 @@ jobs:
         go get -v github.com/mattn/goveralls
         go install -v github.com/mattn/goveralls
 
+    - name: Make Release Folder
+      run: |
+        mkdir ~/release
+    
     - name: Build
       run: |
         cd ~/go/src/github.com/${GITHUB_REPOSITORY}
-        GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
+        GOOS=windows GOARCH=386 go build -o ~/lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        # Artifact name
+        name: beats
+        # Directory containing files to upload
+        path: ~/release
