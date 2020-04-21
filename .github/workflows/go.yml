@@ -30,13 +30,13 @@ jobs:
             dep ensure
         fi
         sudo apt-get clean && apt-get update && apt-get upgrade -y 
-        sudo apt-get install python-pip docker.io -y
+        sudo apt-get install python-pip  -y
         sudo pip install virtualenv
         
     - name: mage install
       run: |
         go get -u -d github.com/magefile/mage
-        cd ./go/src/github.com/magefile/mage
+        cd $GOPATH/src/github.com/magefile/mage
         go run bootstrap.go
 
     - name: Build
