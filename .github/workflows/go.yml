@@ -61,4 +61,4 @@ jobs:
         # Artifact name
         name: beats
         # Directory containing files to upload
-        path: ~/release
+        path: ./release
