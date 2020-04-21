@@ -24,7 +24,7 @@ jobs:
         sudo apt-get install python-pip  -y
         sudo pip install virtualenv
 
-    - name: install Mage 
+    - name: Install Mage 
       run: |
         go get -u -d github.com/magefile/mage
         cd ~/go/src/github.com/magefile/mage
@@ -45,14 +45,15 @@ jobs:
         go get -v github.com/mattn/goveralls
         go install -v github.com/mattn/goveralls
 
-    - name: Make Release Folder
+    - name: Make release folder
       run: |
         mkdir ~/release
     
     - name: Build
       run: |
         cd ~/go/src/github.com/${GITHUB_REPOSITORY}
-        GOOS=windows GOARCH=386 go build -o ~/lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
+        GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
+        cp lsbeat_x86.exe ~/release/lsbeat_x86.exe
         
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
