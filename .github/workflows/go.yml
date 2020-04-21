@@ -54,6 +54,7 @@ jobs:
         cd ~/go/src/github.com/${GITHUB_REPOSITORY}
         GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=syshim"
         cp lsbeat_x86.exe ~/release/lsbeat_x86.exe
+        cd ~
         
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
