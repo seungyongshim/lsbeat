@@ -56,11 +56,17 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 	ticker := time.NewTicker(d)
 	for {
 		for _, path := range bt.paths {
+			if path == "nothing" {
+				continue
+			}
 			path = s.Replace(path, "\\", "/", -1)
 			listDir(path, bt, b)
 		}
 
 		for _, path := range bt.smbDrives {
+			if path == "nothing" {
+				continue
+			}
 			path = s.Replace(path, "\\", "/", -1)
 			checkSmbDrive(path, bt, b)
 		}
