@@ -63,14 +63,6 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 			listDir(path, bt, b)
 		}
 
-		for _, path := range bt.smbDrives {
-			if path == "nothing" {
-				continue
-			}
-			path = s.Replace(path, "\\", "/", -1)
-			checkSmbDrive(path, bt, b)
-		}
-
 		select {
 		case <-bt.done:
 			return nil
@@ -85,22 +77,6 @@ func (bt *Lsbeat) Stop() {
 	close(bt.done)
 }
 
-func checkSmbDrive(dirName string, bt *Lsbeat, b *beat.Beat) {
-	_, err := ioutil.ReadDir(dirName)
-	if err != nil {
-		event := beat.Event{
-			Timestamp: time.Now(),
-			Fields: common.MapStr{
-				"dirName": dirName,
-				"isExist": false,
-				"smb":     true,
-				"reason":  "\\\\192.168.100.76\\watch",
-			},
-		}
-		bt.client.Publish(event)
-	}
-}
-
 func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	files, err := ioutil.ReadDir(dirName)
 
@@ -108,8 +84,9 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 		event := beat.Event{
 			Timestamp: time.Now(),
 			Fields: common.MapStr{
-				"dirName": dirName,
-				"isExist": false,
+				"dirName":  dirName,
+				"isExist":  false,
+				"isFolder": true,
 			},
 		}
 		bt.client.Publish(event)
@@ -148,6 +125,19 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	filecountAcc += filecount
 	subfoldercountAcc += subfoldercount
 
+	eventDir := beat.Event{
+		Timestamp: time.Now(),
+		Fields: common.MapStr{
+			"dirName":                  dirName,
+			"dirSize":                  dirSize,
+			"dirSizeAccumulate":        dirSizeAcc,
+			"subFolderCount":           subfoldercount,
+			"subFolderCountAccumulate": subfoldercountAcc,
+			"isExist":                  true,
+			"isFolder":                 true,
+		},
+	}
+
 	event := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
@@ -160,9 +150,10 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 			"subFolderCount":           subfoldercount,
 			"subFolderCountAccumulate": subfoldercountAcc,
 			"isExist":                  true,
+			"isFolder":                 false,
 		},
 	}
 	bt.client.Publish(event)
-	logp.Info("lsbeat published listDir.")
+	bt.client.Publish(eventDir)
 	return dirSizeAcc, filecountAcc, subfoldercountAcc
 }

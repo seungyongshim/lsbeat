@@ -15,5 +15,4 @@ lsbeat:
   period: 1m
   paths:
   - C:\DemoInput
-  smb_drives:
-  - z:\
+
