@@ -57,7 +57,9 @@ jobs:
       run: |
         cd ~/go/src/github.com/${GITHUB_REPOSITORY}
         GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=mirero"
+        GOOS=linux GOARCH=amd64 go build -o lsbeat -ldflags "-X main.qualifier=mirero"
         cp lsbeat_x86.exe ~/release/lsbeat_x86.exe
+        cp lsbeat ~/release/lsbeat
         cd ~
         pwd
         
@@ -78,3 +80,12 @@ jobs:
         asset_path: ../../.././release/lsbeat_x86.exe
         asset_name: lsbeat.exe
         asset_content_type: application/octet-stream
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        asset_path: ../../.././release/lsbeat.exe
+        asset_name: lsbeat
+        asset_content_type: application/octet-stream        
