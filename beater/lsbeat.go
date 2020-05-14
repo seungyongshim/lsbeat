@@ -129,6 +129,8 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
 			"dirName":                  dirName,
+			"filesCount":               filecount,
+			"filesCountAccumulate":     filecountAcc,
 			"dirSize":                  dirSize,
 			"dirSizeAccumulate":        dirSizeAcc,
 			"subFolderCount":           subfoldercount,
@@ -141,16 +143,10 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	event := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
-			"files":                    fileinfos,
-			"filesCount":               filecount,
-			"filesCountAccumulate":     filecountAcc,
-			"dirName":                  dirName,
-			"dirSize":                  dirSize,
-			"dirSizeAccumulate":        dirSizeAcc,
-			"subFolderCount":           subfoldercount,
-			"subFolderCountAccumulate": subfoldercountAcc,
-			"isExist":                  true,
-			"isFolder":                 false,
+			"files":    fileinfos,
+			"dirName":  dirName,
+			"isExist":  true,
+			"isFolder": false,
 		},
 	}
 	bt.client.Publish(event)
