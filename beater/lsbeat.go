@@ -21,7 +21,7 @@ type Lsbeat struct {
 	client        beat.Client
 	period        time.Duration
 	paths         []string
-	smbDrives     []string
+	depth         int
 	lastIndexTime time.Time // 가장 마지막 검색한 시간
 }
 
@@ -38,7 +38,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	}
 
 	bt.paths = c.Paths
-	bt.smbDrives = c.SmbDrives
+	bt.depth = c.Depth
 
 	return bt, nil
 }
@@ -61,7 +61,7 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 				continue
 			}
 			path = s.Replace(path, "\\", "/", -1)
-			listDir(path, bt, b, 1)
+			listDir(path, bt, b, bt.depth)
 		}
 
 		select {
