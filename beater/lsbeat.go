@@ -3,6 +3,7 @@ package beater
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	s "strings"
 	"time"
 
@@ -60,7 +61,7 @@ func (bt *Lsbeat) Run(b *beat.Beat) error {
 				continue
 			}
 			path = s.Replace(path, "\\", "/", -1)
-			listDir(path, bt, b)
+			listDir(path, bt, b, 1)
 		}
 
 		select {
@@ -77,8 +78,8 @@ func (bt *Lsbeat) Stop() {
 	close(bt.done)
 }
 
-func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
-	files, err := ioutil.ReadDir(dirName)
+func listDir(dirName string, bt *Lsbeat, b *beat.Beat, depth int) (int64, int, int) {
+	curDir, err := os.Stat(dirName)
 
 	if err != nil {
 		event := beat.Event{
@@ -93,6 +94,18 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 		return 0, 0, 0
 	}
 
+	if depth == 0 {
+		return curDir.Size(), 0, 0
+	}
+
+	folderinfo := common.MapStr{
+		"name":    curDir.Name(),
+		"size":    curDir.Size(),
+		"modTime": curDir.ModTime(),
+	}
+
+	files, _ := ioutil.ReadDir(dirName)
+
 	fileinfos := []common.MapStr{}
 
 	dirSize := int64(0)
@@ -105,7 +118,7 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	for _, f := range files {
 		if f.IsDir() {
 			subfoldercount++
-			da, fa, sfa := listDir(dirName+"/"+f.Name(), bt, b)
+			da, fa, sfa := listDir(dirName+"/"+f.Name(), bt, b, depth-1)
 			dirSizeAcc += da
 			filecountAcc += fa
 			subfoldercountAcc += sfa
@@ -113,9 +126,9 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 			dirSize += f.Size()
 
 			fileinfos = append(fileinfos, common.MapStr{
-				"fileName": f.Name(),
-				"fileSize": f.Size(),
-				"modTime":  f.ModTime(),
+				"name":    f.Name(),
+				"size":    f.Size(),
+				"modTime": f.ModTime(),
 			})
 			filecount++
 		}
@@ -128,11 +141,12 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat) (int64, int, int) {
 	eventDir := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
+			"folder":                   folderinfo,
 			"dirName":                  dirName,
+			"dirSizeOld":               dirSize,
+			"dirSizeAccumulate":        dirSizeAcc,
 			"filesCount":               filecount,
 			"filesCountAccumulate":     filecountAcc,
-			"dirSize":                  dirSize,
-			"dirSizeAccumulate":        dirSizeAcc,
 			"subFolderCount":           subfoldercount,
 			"subFolderCountAccumulate": subfoldercountAcc,
 			"isExist":                  true,
