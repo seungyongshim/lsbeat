@@ -98,12 +98,6 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat, depth int) (int64, int, i
 		return curDir.Size(), 0, 0
 	}
 
-	folderinfo := common.MapStr{
-		"name":    curDir.Name(),
-		"size":    curDir.Size(),
-		"modTime": curDir.ModTime(),
-	}
-
 	files, _ := ioutil.ReadDir(dirName)
 
 	fileinfos := []common.MapStr{}
@@ -138,12 +132,20 @@ func listDir(dirName string, bt *Lsbeat, b *beat.Beat, depth int) (int64, int, i
 	filecountAcc += filecount
 	subfoldercountAcc += subfoldercount
 
+	folderinfo := common.MapStr{
+		"name":     curDir.Name(),
+		"size":     dirSize,
+		"modTime":  curDir.ModTime(),
+		"depth":    bt.depth - depth,
+		"maxDepth": bt.depth,
+	}
+
 	eventDir := beat.Event{
 		Timestamp: time.Now(),
 		Fields: common.MapStr{
 			"folder":                   folderinfo,
 			"dirName":                  dirName,
-			"dirSizeOld":               dirSize,
+			"dirSize":                  dirSize,
 			"dirSizeAccumulate":        dirSizeAcc,
 			"filesCount":               filecount,
 			"filesCountAccumulate":     filecountAcc,
