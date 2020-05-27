@@ -1,4 +1,5 @@
 - key: beat
+  anchor: beat-common
   title: Beat
   description: >
     Contains common beat fields available in all event types.
@@ -17,16 +18,6 @@
       object_type: keyword
       description: >
         Contains user configurable fields.
-
-    - name: error
-      type: group
-      description: >
-        Error fields containing additional info in case of errors.
-      fields:
-        - name: type
-          type: keyword
-          description: >
-            Error type.
 
     - name: beat.name
       type: alias

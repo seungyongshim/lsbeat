@@ -20,10 +20,15 @@ package common
 import (
 	"github.com/magefile/mage/mg"
 
-	"github.com/elastic/beats/dev-tools/mage"
+	devtools "github.com/elastic/beats/dev-tools/mage"
 )
 
 // Fmt formats source code (.go and .py) and adds license headers.
 func Fmt() {
-	mg.Deps(mage.Format)
+	mg.Deps(devtools.Format)
+}
+
+// AddLicenseHeaders adds license headers
+func AddLicenseHeaders() {
+	mg.Deps(devtools.AddLicenseHeaders)
 }

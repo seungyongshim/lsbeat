@@ -43,7 +43,13 @@ func GetContainerName(container common.MapStr) string {
 
 // GetHintString takes a hint and returns its value as a string
 func GetHintString(hints common.MapStr, key, config string) string {
-	if iface, err := hints.GetValue(fmt.Sprintf("%s.%s", key, config)); err == nil {
+	base := config
+	if base == "" {
+		base = key
+	} else if key != "" {
+		base = fmt.Sprint(key, ".", config)
+	}
+	if iface, err := hints.GetValue(base); err == nil {
 		if str, ok := iface.(string); ok {
 			return str
 		}
@@ -54,7 +60,13 @@ func GetHintString(hints common.MapStr, key, config string) string {
 
 // GetHintMapStr takes a hint and returns a MapStr
 func GetHintMapStr(hints common.MapStr, key, config string) common.MapStr {
-	if iface, err := hints.GetValue(fmt.Sprintf("%s.%s", key, config)); err == nil {
+	base := config
+	if base == "" {
+		base = key
+	} else if key != "" {
+		base = fmt.Sprint(key, ".", config)
+	}
+	if iface, err := hints.GetValue(base); err == nil {
 		if mapstr, ok := iface.(common.MapStr); ok {
 			return mapstr
 		}
@@ -74,14 +86,19 @@ func GetHintAsList(hints common.MapStr, key, config string) []string {
 
 // GetProcessors gets processor definitions from the hints and returns a list of configs as a MapStr
 func GetProcessors(hints common.MapStr, key string) []common.MapStr {
-	rawProcs := GetHintMapStr(hints, key, "processors")
-	if rawProcs == nil {
+	return GetConfigs(hints, key, "processors")
+}
+
+// GetConfigs takes in a key and returns a list of configs as a slice of MapStr
+func GetConfigs(hints common.MapStr, key, name string) []common.MapStr {
+	raw := GetHintMapStr(hints, key, name)
+	if raw == nil {
 		return nil
 	}
 
 	var words, nums []string
 
-	for key := range rawProcs {
+	for key := range raw {
 		if _, err := strconv.Atoi(key); err != nil {
 			words = append(words, key)
 			continue
@@ -94,7 +111,7 @@ func GetProcessors(hints common.MapStr, key string) []common.MapStr {
 
 	var configs []common.MapStr
 	for _, key := range nums {
-		rawCfg, _ := rawProcs[key]
+		rawCfg, _ := raw[key]
 		if config, ok := rawCfg.(common.MapStr); ok {
 			configs = append(configs, config)
 		}
@@ -102,7 +119,7 @@ func GetProcessors(hints common.MapStr, key string) []common.MapStr {
 
 	for _, word := range words {
 		configs = append(configs, common.MapStr{
-			word: rawProcs[word],
+			word: raw[word],
 		})
 	}
 

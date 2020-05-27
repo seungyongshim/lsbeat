@@ -21,10 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/beats/libbeat/common/mapval"
+	"github.com/elastic/beats/libbeat/monitoring"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/go-lookslike/testslike"
 
 	"github.com/elastic/beats/heartbeat/scheduler"
 )
@@ -34,7 +36,7 @@ func TestMonitor(t *testing.T) {
 	reg := mockPluginsReg()
 	pipelineConnector := &MockPipelineConnector{}
 
-	sched := scheduler.New(1)
+	sched := scheduler.New(1, monitoring.NewRegistry())
 	err := sched.Start()
 	require.NoError(t, err)
 	defer sched.Stop()
@@ -59,7 +61,7 @@ func TestMonitor(t *testing.T) {
 			pcClient.Close()
 
 			for _, event := range pcClient.Publishes() {
-				mapval.Test(t, mockEventMonitorValidator(""), event.Fields)
+				testslike.Test(t, mockEventMonitorValidator(""), event.Fields)
 			}
 		} else {
 			// Let's yield this goroutine so we don't spin
@@ -82,7 +84,7 @@ func TestDuplicateMonitorIDs(t *testing.T) {
 	reg := mockPluginsReg()
 	pipelineConnector := &MockPipelineConnector{}
 
-	sched := scheduler.New(1)
+	sched := scheduler.New(1, monitoring.NewRegistry())
 	err := sched.Start()
 	require.NoError(t, err)
 	defer sched.Stop()
@@ -111,7 +113,7 @@ func TestCheckInvalidConfig(t *testing.T) {
 	reg := mockPluginsReg()
 	pipelineConnector := &MockPipelineConnector{}
 
-	sched := scheduler.New(1)
+	sched := scheduler.New(1, monitoring.NewRegistry())
 	err := sched.Start()
 	require.NoError(t, err)
 	defer sched.Stop()

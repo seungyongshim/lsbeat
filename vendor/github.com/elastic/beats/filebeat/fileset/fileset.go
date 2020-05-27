@@ -173,10 +173,9 @@ func (fs *Fileset) evaluateVars(beatVersion string) (map[string]interface{}, err
 			return nil, fmt.Errorf("Variable doesn't have a string 'name' key")
 		}
 
-		value, exists := vals["default"]
-		if !exists {
-			return nil, fmt.Errorf("Variable %s doesn't have a 'default' key", name)
-		}
+		// Variables are not required to have a default. Templates should
+		// handle null default values as necessary.
+		value := vals["default"]
 
 		// evaluate OS specific vars
 		osVals, exists := vals["os"].(map[string]interface{})
@@ -268,7 +267,7 @@ func resolveVariable(vars map[string]interface{}, value interface{}) (interface{
 // the delimiters are set to `{<` and `>}` instead of `{{` and `}}`. These are easier to use
 // in pipeline definitions.
 func applyTemplate(vars map[string]interface{}, templateString string, specialDelims bool) (string, error) {
-	tpl := template.New("text")
+	tpl := template.New("text").Option("missingkey=error")
 	if specialDelims {
 		tpl = tpl.Delims("{<", ">}")
 	}
@@ -350,6 +349,11 @@ func (fs *Fileset) getInputConfig() (*common.Config, error) {
 	cfg, err := common.NewConfigWithYAML([]byte(yaml), "")
 	if err != nil {
 		return nil, fmt.Errorf("Error reading input config: %v", err)
+	}
+
+	cfg, err = mergePathDefaults(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	// overrides

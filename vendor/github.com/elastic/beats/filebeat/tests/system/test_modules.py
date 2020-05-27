@@ -76,7 +76,7 @@ class Test(BaseTest):
 
         body = {
             "transient": {
-                "script.max_compilations_rate": "1000/1m"
+                "script.max_compilations_rate": "2000/1m"
             }
         }
 
@@ -139,8 +139,12 @@ class Test(BaseTest):
         output = open(os.path.join(output_path, "output.log"), "ab")
         output.write(" ".join(cmd) + "\n")
 
+        # Use a fixed timezone so results don't vary depending on the environment
+        # Don't use UTC to avoid hiding that non-UTC timezones are not being converted as needed,
+        # this can happen because UTC uses to be the default timezone in date parsers when no other
+        # timezone is specified.
         local_env = os.environ.copy()
-        local_env["TZ"] = 'Etc/UTC'
+        local_env["TZ"] = 'Etc/GMT+2'
 
         subprocess.Popen(cmd,
                          env=local_env,
@@ -194,6 +198,7 @@ class Test(BaseTest):
             len(expected), len(objects))
 
         for ev in expected:
+            clean_keys(ev)
             found = False
             for obj in objects:
 
@@ -216,12 +221,19 @@ def clean_keys(obj):
     time_keys = ["event.created"]
     # source path and agent.version can be different for each run
     other_keys = ["log.file.path", "agent.version"]
+    # ECS versions change for any ECS release, large or small
+    ecs_key = ["ecs.version"]
     # datasets for which @timestamp is removed due to date missing
-    remove_timestamp = {"icinga.startup", "redis.log", "haproxy.log", "system.auth", "system.syslog"}
+    remove_timestamp = {"icinga.startup", "redis.log", "haproxy.log",
+                        "system.auth", "system.syslog", "cef.log", "activemq.audit", "iptables.log", "cisco.asa", "cisco.ios"}
     # dataset + log file pairs for which @timestamp is kept as an exception from above
     remove_timestamp_exception = {
         ('system.syslog', 'tz-offset.log'),
-        ('system.auth', 'timestamp.log')
+        ('system.auth', 'timestamp.log'),
+        ('cisco.asa', 'asa.log'),
+        ('cisco.asa', 'hostnames.log'),
+        ('cisco.asa', 'not-ip.log'),
+        ('cisco.asa', 'sample.log')
     }
 
     # Keep source log filename for exceptions
@@ -229,7 +241,7 @@ def clean_keys(obj):
     if "log.file.path" in obj:
         filename = os.path.basename(obj["log.file.path"]).lower()
 
-    for key in host_keys + time_keys + other_keys:
+    for key in host_keys + time_keys + other_keys + ecs_key:
         delete_key(obj, key)
 
     # Most logs from syslog need their timestamp removed because it doesn't
@@ -242,6 +254,11 @@ def clean_keys(obj):
             # so that the exception mechanism can be triggered when the json is
             # loaded.
             obj["log.file.path"] = filename
+
+    # Remove @timestamp from aws vpc flow log with custom format (with no event.end time).
+    if obj["event.dataset"] == "aws.vpcflow":
+        if "event.end" not in obj:
+            delete_key(obj, "@timestamp")
 
 
 def delete_key(obj, key):

@@ -235,6 +235,14 @@ var (
 	elasticBeatsDirLock  sync.Mutex
 )
 
+// SetElasticBeatsDir sets the internal elastic beats dir to a preassigned value
+func SetElasticBeatsDir(path string) {
+	elasticBeatsDirLock.Lock()
+	defer elasticBeatsDirLock.Unlock()
+
+	elasticBeatsDirValue = path
+}
+
 // ElasticBeatsDir returns the path to Elastic beats dir.
 func ElasticBeatsDir() (string, error) {
 	elasticBeatsDirLock.Lock()
@@ -415,7 +423,7 @@ func getBuildVariableSources() *BuildVariableSources {
 		return buildVariableSources
 	}
 
-	panic(errors.Errorf("magefile must call mage.SetBuildVariableSources() "+
+	panic(errors.Errorf("magefile must call devtools.SetBuildVariableSources() "+
 		"because it is not an elastic beat (repo=%+v)", repo.RootImportPath))
 }
 

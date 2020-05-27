@@ -1,6 +1,10 @@
 [[configuration-template]]
 
-== Load the Elasticsearch index template
+== Configure Elasticsearch index template loading
+
+++++
+<titleabbrev>Elasticsearch index template</titleabbrev>
+++++
 
 The `setup.template` section of the +{beatname_lc}.yml+ config file specifies
 the {ref}/indices-templates.html[index template] to use for setting
@@ -8,10 +12,10 @@ mappings in Elasticsearch. If template loading is enabled (the default),
 {beatname_uc} loads the index template automatically after successfully
 connecting to Elasticsearch.
 
-ifndef::only-elasticsearch[]
+ifndef::no-output-logstash[]
 
 NOTE: A connection to Elasticsearch is required to load the index template. If
-the output is Logstash, you must <<load-template-manually,load the template
+the configured output is not Elasticsearch (or Elastic Cloud), you must <<load-template-manually,load the template
 manually>>.
 
 endif::[]
@@ -68,11 +72,6 @@ setup.template.settings:
   index.number_of_shards: 1
   index.number_of_replicas: 1
 ----------------------------------------------------------------------
-
-NOTE: If you want to use {stack-ov}/xpack-ccr.html[{ccr}] to replicate {beatname_uc}
-indices to another cluster, you will need to add additional template settings to
-{stack-ov}/ccr-requirements.html#ccr-overview-beats[enable soft deletes] on the
-underlying indices.
 
 *`setup.template.settings._source`*:: A dictionary of settings for the `_source` field. For the available settings,
 please see the Elasticsearch {ref}/mapping-source-field.html[reference].

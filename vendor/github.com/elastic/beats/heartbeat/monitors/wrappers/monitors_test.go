@@ -20,16 +20,23 @@ package wrappers
 import (
 	"fmt"
 	"net/url"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/beats/heartbeat/eventext"
+	"github.com/elastic/beats/heartbeat/hbtestllext"
 	"github.com/elastic/beats/heartbeat/monitors/jobs"
+	"github.com/elastic/beats/heartbeat/scheduler/schedule"
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
-	"github.com/elastic/beats/libbeat/common/mapval"
+	"github.com/elastic/go-lookslike"
+	"github.com/elastic/go-lookslike/isdef"
+	"github.com/elastic/go-lookslike/testslike"
+	"github.com/elastic/go-lookslike/validator"
 )
 
 type fields struct {
@@ -42,13 +49,14 @@ type testDef struct {
 	name     string
 	fields   fields
 	jobs     []jobs.Job
-	want     []mapval.Validator
-	metaWant []mapval.Validator
+	want     []validator.Validator
+	metaWant []validator.Validator
 }
 
 func testCommonWrap(t *testing.T, tt testDef) {
 	t.Run(tt.name, func(t *testing.T) {
-		wrapped := WrapCommon(tt.jobs, tt.fields.id, tt.fields.name, tt.fields.typ)
+		schedule, _ := schedule.Parse("@every 1s")
+		wrapped := WrapCommon(tt.jobs, tt.fields.id, tt.fields.name, tt.fields.typ, schedule, time.Duration(0))
 
 		results, err := jobs.ExecJobsAndConts(t, wrapped)
 		assert.NoError(t, err)
@@ -57,11 +65,11 @@ func testCommonWrap(t *testing.T, tt testDef) {
 		for idx, r := range results {
 			t.Run(fmt.Sprintf("result at index %d", idx), func(t *testing.T) {
 				want := tt.want[idx]
-				mapval.Test(t, mapval.Strict(want), r.Fields)
+				testslike.Test(t, lookslike.Strict(want), r.Fields)
 
 				if tt.metaWant != nil {
 					metaWant := tt.metaWant[idx]
-					mapval.Test(t, mapval.Strict(metaWant), r.Meta)
+					testslike.Test(t, lookslike.Strict(metaWant), r.Meta)
 				}
 			})
 		}
@@ -74,19 +82,20 @@ func TestSimpleJob(t *testing.T) {
 		"simple",
 		fields,
 		[]jobs.Job{makeURLJob(t, "tcp://foo.com:80")},
-		[]mapval.Validator{
-			mapval.Compose(
+		[]validator.Validator{
+			lookslike.Compose(
 				urlValidator(t, "tcp://foo.com:80"),
-				mapval.MustCompile(mapval.Map{
-					"monitor": mapval.Map{
-						"duration.us": mapval.IsDuration,
+				lookslike.MustCompile(map[string]interface{}{
+					"monitor": map[string]interface{}{
+						"duration.us": isdef.IsDuration,
 						"id":          fields.id,
 						"name":        fields.name,
 						"type":        fields.typ,
 						"status":      "up",
-						"check_group": mapval.IsString,
+						"check_group": isdef.IsString,
 					},
 				}),
+				hbtestllext.MonitorTimespanValidator,
 				summaryValidator(1, 0),
 			)},
 		nil,
@@ -100,16 +109,16 @@ func TestErrorJob(t *testing.T) {
 		return nil, fmt.Errorf("myerror")
 	}
 
-	errorJobValidator := mapval.Compose(
-		mapval.MustCompile(mapval.Map{"error": mapval.Map{"message": "myerror", "type": "io"}}),
-		mapval.MustCompile(mapval.Map{
-			"monitor": mapval.Map{
-				"duration.us": mapval.IsDuration,
+	errorJobValidator := lookslike.Compose(
+		lookslike.MustCompile(map[string]interface{}{"error": map[string]interface{}{"message": "myerror", "type": "io"}}),
+		lookslike.MustCompile(map[string]interface{}{
+			"monitor": map[string]interface{}{
+				"duration.us": isdef.IsDuration,
 				"id":          fields.id,
 				"name":        fields.name,
 				"type":        fields.typ,
 				"status":      "down",
-				"check_group": mapval.IsString,
+				"check_group": isdef.IsString,
 			},
 		}),
 	)
@@ -118,9 +127,10 @@ func TestErrorJob(t *testing.T) {
 		"job error",
 		fields,
 		[]jobs.Job{errorJob},
-		[]mapval.Validator{
-			mapval.Compose(
+		[]validator.Validator{
+			lookslike.Compose(
 				errorJobValidator,
+				hbtestllext.MonitorTimespanValidator,
 				summaryValidator(0, 1),
 			)},
 		nil,
@@ -130,14 +140,14 @@ func TestErrorJob(t *testing.T) {
 func TestMultiJobNoConts(t *testing.T) {
 	fields := fields{"myid", "myname", "mytyp"}
 
-	uniqScope := mapval.ScopedIsUnique()
+	uniqScope := isdef.ScopedIsUnique()
 
-	validator := func(u string) mapval.Validator {
-		return mapval.Compose(
+	validatorMaker := func(u string) validator.Validator {
+		return lookslike.Compose(
 			urlValidator(t, u),
-			mapval.MustCompile(mapval.Map{
-				"monitor": mapval.Map{
-					"duration.us": mapval.IsDuration,
+			lookslike.MustCompile(map[string]interface{}{
+				"monitor": map[string]interface{}{
+					"duration.us": isdef.IsDuration,
 					"id":          uniqScope.IsUniqueTo("id"),
 					"name":        fields.name,
 					"type":        fields.typ,
@@ -145,6 +155,7 @@ func TestMultiJobNoConts(t *testing.T) {
 					"check_group": uniqScope.IsUniqueTo("check_group"),
 				},
 			}),
+			hbtestllext.MonitorTimespanValidator,
 			summaryValidator(1, 0),
 		)
 	}
@@ -153,7 +164,7 @@ func TestMultiJobNoConts(t *testing.T) {
 		"multi-job",
 		fields,
 		[]jobs.Job{makeURLJob(t, "http://foo.com"), makeURLJob(t, "http://bar.com")},
-		[]mapval.Validator{validator("http://foo.com"), validator("http://bar.com")},
+		[]validator.Validator{validatorMaker("http://foo.com"), validatorMaker("http://bar.com")},
 		nil,
 	})
 }
@@ -161,7 +172,7 @@ func TestMultiJobNoConts(t *testing.T) {
 func TestMultiJobConts(t *testing.T) {
 	fields := fields{"myid", "myname", "mytyp"}
 
-	uniqScope := mapval.ScopedIsUnique()
+	uniqScope := isdef.ScopedIsUnique()
 
 	makeContJob := func(t *testing.T, u string) jobs.Job {
 		return func(event *beat.Event) ([]jobs.Job, error) {
@@ -179,13 +190,13 @@ func TestMultiJobConts(t *testing.T) {
 		}
 	}
 
-	contJobValidator := func(u string, msg string) mapval.Validator {
-		return mapval.Compose(
+	contJobValidator := func(u string, msg string) validator.Validator {
+		return lookslike.Compose(
 			urlValidator(t, u),
-			mapval.MustCompile(mapval.Map{"cont": msg}),
-			mapval.MustCompile(mapval.Map{
-				"monitor": mapval.Map{
-					"duration.us": mapval.IsDuration,
+			lookslike.MustCompile(map[string]interface{}{"cont": msg}),
+			lookslike.MustCompile(map[string]interface{}{
+				"monitor": map[string]interface{}{
+					"duration.us": isdef.IsDuration,
 					"id":          uniqScope.IsUniqueTo(u),
 					"name":        fields.name,
 					"type":        fields.typ,
@@ -193,6 +204,7 @@ func TestMultiJobConts(t *testing.T) {
 					"check_group": uniqScope.IsUniqueTo(u),
 				},
 			}),
+			hbtestllext.MonitorTimespanValidator,
 		)
 	}
 
@@ -200,14 +212,14 @@ func TestMultiJobConts(t *testing.T) {
 		"multi-job-continuations",
 		fields,
 		[]jobs.Job{makeContJob(t, "http://foo.com"), makeContJob(t, "http://bar.com")},
-		[]mapval.Validator{
+		[]validator.Validator{
 			contJobValidator("http://foo.com", "1st"),
-			mapval.Compose(
+			lookslike.Compose(
 				contJobValidator("http://foo.com", "2nd"),
 				summaryValidator(2, 0),
 			),
 			contJobValidator("http://bar.com", "1st"),
-			mapval.Compose(
+			lookslike.Compose(
 				contJobValidator("http://bar.com", "2nd"),
 				summaryValidator(2, 0),
 			),
@@ -219,7 +231,7 @@ func TestMultiJobConts(t *testing.T) {
 func TestMultiJobContsCancelledEvents(t *testing.T) {
 	fields := fields{"myid", "myname", "mytyp"}
 
-	uniqScope := mapval.ScopedIsUnique()
+	uniqScope := isdef.ScopedIsUnique()
 
 	makeContJob := func(t *testing.T, u string) jobs.Job {
 		return func(event *beat.Event) ([]jobs.Job, error) {
@@ -238,13 +250,13 @@ func TestMultiJobContsCancelledEvents(t *testing.T) {
 		}
 	}
 
-	contJobValidator := func(u string, msg string) mapval.Validator {
-		return mapval.Compose(
+	contJobValidator := func(u string, msg string) validator.Validator {
+		return lookslike.Compose(
 			urlValidator(t, u),
-			mapval.MustCompile(mapval.Map{"cont": msg}),
-			mapval.MustCompile(mapval.Map{
-				"monitor": mapval.Map{
-					"duration.us": mapval.IsDuration,
+			lookslike.MustCompile(map[string]interface{}{"cont": msg}),
+			lookslike.MustCompile(map[string]interface{}{
+				"monitor": map[string]interface{}{
+					"duration.us": isdef.IsDuration,
 					"id":          uniqScope.IsUniqueTo(u),
 					"name":        fields.name,
 					"type":        fields.typ,
@@ -252,35 +264,36 @@ func TestMultiJobContsCancelledEvents(t *testing.T) {
 					"check_group": uniqScope.IsUniqueTo(u),
 				},
 			}),
+			hbtestllext.MonitorTimespanValidator,
 		)
 	}
 
-	metaCancelledValidator := mapval.MustCompile(mapval.Map{eventext.EventCancelledMetaKey: true})
+	metaCancelledValidator := lookslike.MustCompile(map[string]interface{}{eventext.EventCancelledMetaKey: true})
 	testCommonWrap(t, testDef{
 		"multi-job-continuations",
 		fields,
 		[]jobs.Job{makeContJob(t, "http://foo.com"), makeContJob(t, "http://bar.com")},
-		[]mapval.Validator{
-			mapval.Compose(
+		[]validator.Validator{
+			lookslike.Compose(
 				contJobValidator("http://foo.com", "1st"),
 			),
-			mapval.Compose(
+			lookslike.Compose(
 				contJobValidator("http://foo.com", "2nd"),
 				summaryValidator(1, 0),
 			),
-			mapval.Compose(
+			lookslike.Compose(
 				contJobValidator("http://bar.com", "1st"),
 			),
-			mapval.Compose(
+			lookslike.Compose(
 				contJobValidator("http://bar.com", "2nd"),
 				summaryValidator(1, 0),
 			),
 		},
-		[]mapval.Validator{
+		[]validator.Validator{
 			metaCancelledValidator,
-			mapval.MustCompile(mapval.Map{}),
+			lookslike.MustCompile(isdef.IsEqual(common.MapStr(nil))),
 			metaCancelledValidator,
-			mapval.MustCompile(mapval.Map{}),
+			lookslike.MustCompile(isdef.IsEqual(common.MapStr(nil))),
 		},
 	})
 }
@@ -294,19 +307,60 @@ func makeURLJob(t *testing.T, u string) jobs.Job {
 	}
 }
 
-func urlValidator(t *testing.T, u string) mapval.Validator {
+func urlValidator(t *testing.T, u string) validator.Validator {
 	parsed, err := url.Parse(u)
 	require.NoError(t, err)
-	return mapval.MustCompile(mapval.Map{"url": mapval.Map(URLFields(parsed))})
+	return lookslike.MustCompile(map[string]interface{}{"url": map[string]interface{}(URLFields(parsed))})
 }
 
 // This duplicates hbtest.SummaryChecks to avoid an import cycle.
 // It could be refactored out, but it just isn't worth it.
-func summaryValidator(up int, down int) mapval.Validator {
-	return mapval.MustCompile(mapval.Map{
-		"summary": mapval.Map{
+func summaryValidator(up int, down int) validator.Validator {
+	return lookslike.MustCompile(map[string]interface{}{
+		"summary": map[string]interface{}{
 			"up":   uint16(up),
 			"down": uint16(down),
 		},
 	})
+}
+
+func TestTimespan(t *testing.T) {
+	now := time.Now()
+	sched10s, err := schedule.Parse("@every 10s")
+	require.NoError(t, err)
+
+	type args struct {
+		started time.Time
+		sched   *schedule.Schedule
+		timeout time.Duration
+	}
+	tests := []struct {
+		name string
+		args args
+		want common.MapStr
+	}{
+		{
+			"interval longer than timeout",
+			args{now, sched10s, time.Second},
+			common.MapStr{
+				"gte": now,
+				"lt":  now.Add(time.Second * 10),
+			},
+		},
+		{
+			"timeout longer than interval",
+			args{now, sched10s, time.Second * 20},
+			common.MapStr{
+				"gte": now,
+				"lt":  now.Add(time.Second * 20),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := timespan(tt.args.started, tt.args.sched, tt.args.timeout); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("timespan() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

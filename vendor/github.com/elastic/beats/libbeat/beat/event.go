@@ -51,7 +51,7 @@ func (e *Event) SetID(id string) {
 	if e.Meta == nil {
 		e.Meta = common.MapStr{}
 	}
-	e.Meta["id"] = id
+	e.Meta["_id"] = id
 }
 
 func (e *Event) GetValue(key string) (interface{}, error) {
@@ -123,4 +123,11 @@ func metadataKey(key string) (string, bool) {
 		return subKey[1:], true
 	}
 	return "", false
+}
+
+// SetErrorWithOption sets jsonErr value in the event fields according to addErrKey value.
+func (e *Event) SetErrorWithOption(jsonErr common.MapStr, addErrKey bool) {
+	if addErrKey {
+		e.Fields["error"] = jsonErr
+	}
 }

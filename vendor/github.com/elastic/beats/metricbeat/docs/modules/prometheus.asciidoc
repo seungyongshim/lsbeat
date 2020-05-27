@@ -1,12 +1,22 @@
 ////
-This file is generated! See scripts/docs_collector.py
+This file is generated! See scripts/mage/docs_collector.go
 ////
 
 [[metricbeat-module-prometheus]]
 == Prometheus module
 
+[[prometheus-module]]
 This module periodically scrapes metrics from
 https://prometheus.io/docs/instrumenting/exporters/[Prometheus exporters].
+
+[float]
+=== Dashboard
+
+The Prometheus module comes with a predefined dashboard for Prometheus specific stats. For example:
+
+image::./images/metricbeat-prometheus-overview.png[]
+
+
 
 
 [float]
@@ -26,7 +36,7 @@ metricbeat.modules:
   #password: "secret"
 
   # This can be used for service account based authorization:
-  #  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  #bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
   #ssl.certificate_authorities:
   #  - /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 ----
