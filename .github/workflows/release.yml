@@ -57,7 +57,7 @@ jobs:
       run: |
         cd ~/go/src/github.com/${GITHUB_REPOSITORY}
         GOOS=windows GOARCH=386 go build -o lsbeat_x86.exe -ldflags "-X main.qualifier=mirero"
-        GOOS=linux GOARCH=amd64 go build -o lsbeat -ldflags "-X main.qualifier=mirero"
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o lsbeat -ldflags "-X main.qualifier=mirero"
         cp lsbeat_x86.exe ~/release/lsbeat_x86.exe
         cp lsbeat ~/release/lsbeat
         cd ~
